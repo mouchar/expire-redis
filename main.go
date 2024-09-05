@@ -16,6 +16,7 @@ func main() {
 	hostnamePtr := flag.String("hostname", "", "RedisHostname")
 	portPtr := flag.String("port", "6379", "Redis Port")
 	sentinelPtr := flag.Bool("sentinel", false, "Use Redis Sentinel")
+	rateLimitPtr := flag.Int("rate-limit", 1000, "Rate limit in keys processed per second")
 	flag.Parse()
 
 	if *sentinelPtr {
@@ -46,9 +47,16 @@ func main() {
 	counter := 0
 	ttlSet := 0
 
+	ticker := time.NewTicker(time.Second / time.Duration(*rateLimitPtr))
+	defer ticker.Stop()
+
 	ctx := context.Background()
 	for iter := client.Scan(ctx, 0, "*", 0).Iterator(); iter.Next(ctx); {
 		key := iter.Val()
+
+		// Wait for the ticker before sending the next Redis command
+		<-ticker.C
+
 		ttl, err := client.TTL(ctx, key).Result()
 		if err != nil {
 			panic(err)
