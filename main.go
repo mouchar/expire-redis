@@ -17,6 +17,7 @@ func main() {
 	portPtr := flag.String("port", "6379", "Redis Port")
 	sentinelPtr := flag.Bool("sentinel", false, "Use Redis Sentinel")
 	rateLimitPtr := flag.Int("rate-limit", 1000, "Rate limit in keys processed per second")
+	dryRunPtr := flag.Bool("dry-run", false, "Dry run")
 	flag.Parse()
 
 	if *sentinelPtr {
@@ -62,13 +63,15 @@ func main() {
 			panic(err)
 		}
 		if ttl == -1 {
-			err := client.Expire(ctx, key, 1*time.Hour).Err()
-			if err != nil {
-				panic(err)
+			if !*dryRunPtr {
+				err := client.Expire(ctx, key, 1*time.Hour).Err()
+				if err != nil {
+					panic(err)
+				}
 			}
 			ttlSet++
 			if *verbosePtr {
-				fmt.Printf("Key %s didn't have a TTL and was set.\n", key)
+				fmt.Printf("Key %s didn't have a TTL.\n", key)
 			}
 		}
 		counter++
